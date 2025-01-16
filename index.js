@@ -117,11 +117,33 @@ app.get('/api/data', (req, res) => {
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
 
+    // Flag to track if the format has been sent
+    let formatSent = false;
+
     const sendData = () => {
-        res.write(`data: ${JSON.stringify(receivedData, null, 2)}\n\n`);
+        if (!formatSent) {
+            // Send the JSON format once
+            res.write(`data: {
+  "potentiometer_value": null,
+  "pwm_value": null,
+  "potentiometer_voltage": null,
+  "motor_voltage": null,
+  "base_voltage": null
+}\n\n`);
+            formatSent = true;
+        }
+
+        // Send only the numeric values dynamically
+        res.write(`data: {
+  "potentiometer_value": ${receivedData.potentiometer_value},
+  "pwm_value": ${receivedData.pwm_value},
+  "potentiometer_voltage": ${receivedData.potentiometer_voltage},
+  "motor_voltage": ${receivedData.motor_voltage},
+  "base_voltage": ${receivedData.base_voltage}
+}\n\n`);
     };
 
-    // Send data initially
+    // Send initial format and data
     sendData();
 
     // Send updated data every second
@@ -134,6 +156,7 @@ app.get('/api/data', (req, res) => {
         clearInterval(interval);
     });
 });
+
 
 app.listen(PORT, () => {
     console.log(`Server is running at port ${PORT}`);
