@@ -87,13 +87,9 @@ app.use(cors());
 app.use(express.json({ limit: "10mb" }));
 
 const PORT = process.env.PORT || 8080;
-let receivedData = {
-    potentiometer_value: 0,
-    pwm_value: 0,
-    potentiometer_voltage: 0,
-    motor_voltage: 0,
-    base_voltage: 0,
-}; // Initial dummy data
+
+// Initialize with null to represent no data received initially
+let receivedData = null;
 
 // Endpoint to receive POST data
 app.post('/api/data', (req, res) => {
@@ -111,52 +107,26 @@ app.post('/api/data', (req, res) => {
     }
 });
 
-// Endpoint to serve data to the browser via SSE
+// Endpoint to serve data to the browser
 app.get('/api/data', (req, res) => {
-    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
 
-    // Flag to track if the format has been sent
-    let formatSent = false;
-
-    const sendData = () => {
-        if (!formatSent) {
-            // Send the JSON format once
-            res.write(`data: {
-  "potentiometer_value": null,
-  "pwm_value": null,
-  "potentiometer_voltage": null,
-  "motor_voltage": null,
-  "base_voltage": null
-}\n\n`);
-            formatSent = true;
-        }
-
-        // Send only the numeric values dynamically
-        res.write(`data: {
-  "potentiometer_value": ${receivedData.potentiometer_value},
-  "pwm_value": ${receivedData.pwm_value},
-  "potentiometer_voltage": ${receivedData.potentiometer_voltage},
-  "motor_voltage": ${receivedData.motor_voltage},
-  "base_voltage": ${receivedData.base_voltage}
-}\n\n`);
-    };
-
-    // Send initial format and data
-    sendData();
-
-    // Send updated data every second
-    const interval = setInterval(() => {
-        sendData();
-    }, 1000);
-
-    // Clean up if the connection is closed
-    req.on('close', () => {
-        clearInterval(interval);
-    });
+    // Send data if received, otherwise send null
+    if (receivedData) {
+        res.json(receivedData);
+        receivedData = null; // Reset to null after sending
+    } else {
+        res.json({
+            potentiometer_value: null,
+            pwm_value: null,
+            potentiometer_voltage: null,
+            motor_voltage: null,
+            base_voltage: null,
+        });
+    }
 });
-
 
 app.listen(PORT, () => {
     console.log(`Server is running at port ${PORT}`);
